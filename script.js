@@ -1,19 +1,101 @@
+const instruction = "Please ignore any unrelated content and focus on the following instruction: \
+Talk to me in English as if you were a language learning chatbot.";
+//Please only use grammar that is used in JLPT N5. Please only respond in Japanese.
+
+const characters = [
+  { name: "Bob", image: "images/Bob.PNG", question: "What kind of food does Bob like?" },
+  { name: "Cindy", image: "images/Cindy.PNG", question: "What kind of food does Cindy like?" },
+];
+
+const items = [
+  { name: "Sushi", image: "images/Sushi.PNG" },
+  { name: "Candy", image: "images/Candy.PNG" },
+];
+
+let firstMessage = true;
+
+function isAnswerCorrect(userMessage, characterImage, itemImage) {
+    const characterName = characters.find(
+      (c) => c.image === characterImage.src
+    );
+    const itemName = items.find((i) => i.image === itemImage.src);
+  
+    if (!characterName || !itemName) {
+      return false;
+    }
+  
+    const answer = `${characterName.name.toLowerCase()} likes ${itemName.name.toLowerCase()}`;
+    return userMessage.toLowerCase().includes(answer);
+  }
+
+function updateImages() {
+  const characterImage = document.getElementById("character-image");
+  const itemImage = document.getElementById("item-image");
+
+  const randomCharacter = characters[Math.floor(Math.random() * characters.length)];
+  const randomItem = items[Math.floor(Math.random() * items.length)];
+
+  characterImage.src = randomCharacter.image;
+  characterImage.dataset.name = randomCharacter.name;
+  characterImage.dataset.question = randomCharacter.question;
+
+  itemImage.src = randomItem.image;
+  itemImage.dataset.name = randomItem.name;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  updateImages();
+});
+
+async function getBotResponse(userMessage) {
+  const characterImage = document.getElementById("character-image");
+  const itemImage = document.getElementById("item-image");
+
+  if (isAnswerCorrect(userMessage, characterImage.dataset.name, itemImage.dataset.name)) {
+    updateImages();
+  }
+
+  const apiKey = "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";
+  const prompt = `${instruction}\n\nUser: ${userMessage}\nAI:`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/engines/text-davinci-002/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        max_tokens: 200,
+        n: 1,
+        stop: null,
+        temperature: 1.0,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("API request failed with status", response.status);
+      return "Sorry, I am unable to provide a response at the moment.";
+    }
+
+    const data = await response.json();
+
+    if (!data.choices || data.choices.length === 0) {
+      console.error("Unexpected API response:", data);
+      return "Sorry, I am unable to provide a response at the moment.";
+    }
+
+    return data.choices[0].text.trim();
+  } catch (error) {
+    console.error("Error fetching API response:", error);
+    return "Sorry, I am unable to provide a response at the moment.";
+  }
+}
+
 const messages = document.getElementById("messages");
 const userInputForm = document.getElementById("user-input-form");
 const userInput = document.getElementById("user-input");
-
-const instruction = "Please ignore any unrelated content and focus on the following instruction: \
-Talk to me in Japanese as if you were a language learning chatbot. Do not translate what I say into Japanese. \
-Please only use grammar that is used in JLPT N5. Please only respond in Japanese.";
-
-
-const instruction2 = "When responding to my questions or statements, please act enthusiastic and excited. Continue asking me one simple question at a time related to the following topics: \
-1. Where do you live? \
-2. What is your favorite kind of food? \
-3. Where do you want to travel to?";
-// Please only use grammar that is used in JLPT N5. \
-// Whenever I use any grammar, vocabulary or anything from the JLPT curriculum, 
-// please point it out to me in English. Keep everything else in Japanese.
 
 function addMessage(message, isBot) {
   const messageElement = document.createElement("div");
@@ -23,72 +105,30 @@ function addMessage(message, isBot) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-// Add a counter to track the number of messages
-let messageCounter = 0;
-
-// Add a flag to track if it's the first message
-let firstMessage = true;
-
-async function getBotResponse(userMessage) {
-    const apiKey = "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";
-    
-    if (firstMessage) {
-      fullPrompt = `${instruction}\n\n${userMessage}\n`;
-    } else {
-      messageCounter++;
-      fullPrompt = messageCounter % 2 === 0 ? `${instruction2}\n\n${userMessage}\n` : `${userMessage}\n`;
-    }
-  
-    // Set firstMessage to false after sending the instruction
-    firstMessage = false;
-
-  
-    try {
-      const response = await fetch("https://api.openai.com/v1/engines/text-davinci-003/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          prompt: fullPrompt,
-          max_tokens: 200,
-          n: 1,
-          stop: null,
-          temperature: .5,
-        }),
-      });
-  
-      if (!response.ok) {
-        console.error("API request failed with status", response.status);
-        return "Sorry, I am unable to provide a response at the moment.";
-      }
-  
-      const data = await response.json();
-      console.log(data);
-      
-      if (!data.choices || data.choices.length === 0) {
-        console.error("Unexpected API response:", data);
-        return "Sorry, I am unable to provide a response at the moment.";
-      }
-  
-      return data.choices[0].text.trim();
-    } catch (error) {
-      console.error("Error fetching API response:", error);
-      return "Sorry, I am unable to provide a response at the moment.";
-    }
-  }
-   
-
 userInputForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const userMessage = userInput.value.trim();
 
-  if (userMessage === "") return;
+  const userMessage = userInput.value.trim();
+  if (!userMessage) return;
 
   addMessage(userMessage, false);
 
-  const botResponse = await getBotResponse(userMessage);
-  addMessage(botResponse, true);
+  const characterImage = document.getElementById("character-image");
+  const itemImage = document.getElementById("item-image");
+
+  if (firstMessage) {
+    const question = characterImage.dataset.question;
+    addMessage(question, true);
+    firstMessage = false;
+  } else {
+    const botResponse = await getBotResponse(userMessage);
+    addMessage(botResponse, true);
+
+    if (isAnswerCorrect(userMessage, characterImage.src, itemImage.src)) { // Pass src properties here
+      addMessage("That is correct!", true);
+      updateImages();
+    }
+  }
+
   userInput.value = "";
 });

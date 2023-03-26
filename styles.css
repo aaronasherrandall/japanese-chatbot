@@ -5,6 +5,23 @@ body {
     margin: 0;
     padding: 0;
   }
+
+  #image-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    position: relative;
+  }
+  
+  #character-image {
+    max-width: 400px;
+    height: auto;
+  }
+  #item-image {
+    max-width: 200px;
+    height: auto;
+  }
   
   h1 {
     text-align: center;
